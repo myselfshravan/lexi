@@ -40,8 +40,6 @@ from ask_sdk_core.dispatch_components import (
     AbstractResponseInterceptor,
 )
 import ask_sdk_core.utils as ask_utils
-from ask_sdk_model import Intent
-from ask_sdk_model.dialog import ElicitSlotDirective
 from flask_ask_sdk.skill_adapter import SkillAdapter
 
 # --------------------------------------------------------------------------- #
@@ -275,19 +273,11 @@ def ask_groq(question, history):
 #  Alexa handlers  (param names MUST be handler_input / exception)             #
 # --------------------------------------------------------------------------- #
 def keep_listening(handler_input, speech, reprompt="I'm still here — what next?"):
-    """Speak, then re-open the mic by ELICITING the query slot of AskLexiIntent.
-
-    This is what makes Lexi conversational: instead of hoping the next utterance
-    matches a sample, we tell Alexa to capture whatever the user says straight
-    into `query` — so any follow-up phrasing (a question OR a home command) comes
-    right back to AskLexiHandler, no wake word or carrier phrase needed."""
-    return (handler_input.response_builder
-            .speak(speech)
-            .ask(reprompt)
-            .add_directive(ElicitSlotDirective(
-                slot_to_elicit="query",
-                updated_intent=Intent(name="AskLexiIntent")))
-            .response)
+    """Speak and re-open the mic (session stays open via .ask, which sets
+    shouldEndSession=false). The user's follow-up — a question OR a home command
+    — comes back to AskLexiHandler by matching its broad catch-all sample
+    utterances (what/why/turn/open/set/tell me/the/i/my … {query})."""
+    return handler_input.response_builder.speak(speech).ask(reprompt).response
 
 
 class LaunchHandler(AbstractRequestHandler):

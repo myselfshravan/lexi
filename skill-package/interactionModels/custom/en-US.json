@@ -99,24 +99,6 @@
         }
       ],
       "types": []
-    },
-    "dialog": {
-      "intents": [
-        {
-          "name": "AskLexiIntent",
-          "delegationStrategy": "SKILL_RESPONSE",
-          "slots": [
-            {
-              "name": "query",
-              "type": "AMAZON.SearchQuery",
-              "elicitationRequired": false,
-              "confirmationRequired": false,
-              "prompts": {}
-            }
-          ]
-        }
-      ]
-    },
-    "prompts": []
+    }
   }
 }
