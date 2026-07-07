@@ -1,0 +1,59 @@
+{
+  "interactionModel": {
+    "languageModel": {
+      "invocationName": "my lexi",
+      "intents": [
+        {
+          "name": "AMAZON.CancelIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.StopIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.HelpIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.NavigateHomeIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.FallbackIntent",
+          "samples": []
+        },
+        {
+          "name": "AskLexiIntent",
+          "slots": [
+            {
+              "name": "query",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "ask {query}",
+            "tell me {query}",
+            "I want to know {query}",
+            "what {query}",
+            "whats {query}",
+            "why {query}",
+            "how {query}",
+            "who {query}",
+            "when {query}",
+            "where {query}",
+            "which {query}",
+            "can you {query}",
+            "do you {query}",
+            "should I {query}",
+            "is {query}",
+            "are {query}",
+            "give me {query}",
+            "explain {query}"
+          ]
+        }
+      ],
+      "types": []
+    }
+  }
+}

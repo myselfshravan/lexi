@@ -1,0 +1,28 @@
+# secrets & local env — never commit
+.env
+*.env
+!*.env.example
+**/.env
+server/.env
+
+# python
+.venv/
+**/.venv/
+__pycache__/
+**/__pycache__/
+*.pyc
+
+# logs & runtime
+logs/
+**/logs/
+*.log
+turns.jsonl
+
+# cloudflared credentials (if ever copied in)
+*.cloudflared.json
+cert.pem
+
+# os / editor
+.DS_Store
+.idea/
+.vscode/
