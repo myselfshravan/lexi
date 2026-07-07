@@ -8,6 +8,20 @@ Unlike the usual "ChatGPT on Alexa" tutorials, Lexi runs on **Groq** (sub‑seco
 
 ---
 
+## Demo
+
+Say it, and it answers in under a second — every turn logged with latency and tokens:
+
+```
+▶ IntentRequest  [AskLexiIntent]
+✓ IntentRequest[AskLexiIntent]  ·  812ms  ·  groq 783ms  ·  199/85 tok
+   "You're spot-on — the sky's usually blue, but it loves to dress up at sunrise and sunset."
+```
+
+> 🎥 A video of the Echo answering live + the terminal streaming is in [`docs/`](./docs/) — see [docs/CAPTURE.md](./docs/CAPTURE.md).
+
+---
+
 ## How it works
 
 ```

@@ -22,6 +22,9 @@ turns.jsonl
 *.cloudflared.json
 cert.pem
 
+# local-only promo drafts (not for the public repo)
+launch-posts.md
+
 # os / editor
 .DS_Store
 .idea/
