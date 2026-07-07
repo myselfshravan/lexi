@@ -40,6 +40,8 @@ from ask_sdk_core.dispatch_components import (
     AbstractResponseInterceptor,
 )
 import ask_sdk_core.utils as ask_utils
+from ask_sdk_model import Intent
+from ask_sdk_model.dialog import ElicitSlotDirective
 from flask_ask_sdk.skill_adapter import SkillAdapter
 
 # --------------------------------------------------------------------------- #
@@ -272,15 +274,31 @@ def ask_groq(question, history):
 # --------------------------------------------------------------------------- #
 #  Alexa handlers  (param names MUST be handler_input / exception)             #
 # --------------------------------------------------------------------------- #
+def keep_listening(handler_input, speech, reprompt="I'm still here — what next?"):
+    """Speak, then re-open the mic by ELICITING the query slot of AskLexiIntent.
+
+    This is what makes Lexi conversational: instead of hoping the next utterance
+    matches a sample, we tell Alexa to capture whatever the user says straight
+    into `query` — so any follow-up phrasing (a question OR a home command) comes
+    right back to AskLexiHandler, no wake word or carrier phrase needed."""
+    return (handler_input.response_builder
+            .speak(speech)
+            .ask(reprompt)
+            .add_directive(ElicitSlotDirective(
+                slot_to_elicit="query",
+                updated_intent=Intent(name="AskLexiIntent")))
+            .response)
+
+
 class LaunchHandler(AbstractRequestHandler):
     def can_handle(self, handler_input):
         return ask_utils.is_request_type("LaunchRequest")(handler_input)
 
     def handle(self, handler_input):
         handler_input.attributes_manager.session_attributes["history"] = []
-        return (handler_input.response_builder
-                .speak("Hey, Lexi here. What's on your mind?")
-                .ask("I'm listening.").response)
+        return keep_listening(handler_input,
+                              "Hey, Lexi here. What's on your mind?",
+                              "Ask me anything, or tell me what to switch on.")
 
 
 class AskLexiHandler(AbstractRequestHandler):
@@ -290,6 +308,9 @@ class AskLexiHandler(AbstractRequestHandler):
     def handle(self, handler_input):
         slots = handler_input.request_envelope.request.intent.slots
         query = slots["query"].value if slots and slots.get("query") else ""
+        # Elicited-but-empty (user said nothing intelligible) — keep the mic open.
+        if not query:
+            return keep_listening(handler_input, "I didn't catch that. Say it again?")
         hist = handler_input.attributes_manager.session_attributes.get("history", [])
         try:
             answer = ask_groq(query, hist)
@@ -299,7 +320,7 @@ class AskLexiHandler(AbstractRequestHandler):
         hist += [{"role": "user", "content": query},
                  {"role": "assistant", "content": answer}]
         handler_input.attributes_manager.session_attributes["history"] = hist[-8:]
-        return handler_input.response_builder.speak(answer).ask("Anything else?").response
+        return keep_listening(handler_input, answer, "Anything else?")
 
 
 class HelpHandler(AbstractRequestHandler):
@@ -307,9 +328,10 @@ class HelpHandler(AbstractRequestHandler):
         return ask_utils.is_intent_name("AMAZON.HelpIntent")(handler_input)
 
     def handle(self, handler_input):
-        return (handler_input.response_builder
-                .speak("Just ask me anything, like the weather or a question.")
-                .ask("What do you want to know?").response)
+        return keep_listening(
+            handler_input,
+            "Ask me anything, or tell me to switch something on around the house.",
+            "What do you want to know?")
 
 
 class CancelStopHandler(AbstractRequestHandler):
@@ -327,9 +349,8 @@ class FallbackHandler(AbstractRequestHandler):
         return ask_utils.is_intent_name("AMAZON.FallbackIntent")(handler_input)
 
     def handle(self, handler_input):
-        return (handler_input.response_builder
-                .speak("Didn't catch that. Try starting with what, how, or why.")
-                .ask("What's your question?").response)
+        # Don't dead-end — re-open the mic and capture the next thing they say.
+        return keep_listening(handler_input, "Sorry, I missed that. Say it again?")
 
 
 class SessionEndedHandler(AbstractRequestHandler):
@@ -381,6 +402,8 @@ class LogResponse(AbstractResponseInterceptor):
             speech = getattr(response.output_speech, "ssml", "") or ""
             speech = speech.replace("<speak>", "").replace("</speak>", "").strip()
         turn().setdefault("answer", speech)
+        # should_end_session False = mic reopens for a follow-up; None/True = session ends
+        turn()["end_session"] = getattr(response, "should_end_session", None) is not False
 
 
 # --------------------------------------------------------------------------- #
@@ -428,6 +451,7 @@ def _end_turn(response):
             bits.append(f"{t['tokens_in']}/{t['tokens_out']} tok")
         if t["tools"]:
             bits.append("tools " + ",".join(t["tools"]))
+        bits.append("mic open" if t.get("end_session") is False else "session end")
         log.info("✓ %s%s  ·  %s", t["request_type"],
                  f"[{t['intent']}]" if t.get("intent") else "", "  ·  ".join(bits))
         if t.get("answer"):
