@@ -39,7 +39,7 @@ You: "Alexa, open my lexi"
   Flask app on your machine  :8080     ← verifies Alexa's signature
         │
         ├──► Groq (openai/gpt-oss-120b) ─ answers questions in ~0.8s
-        └──► your home hub (LAN) ─ Schneider / Wiser / KNX / Home Assistant
+        └──► your home hub (LAN) ─ Control4 / Schneider-Wiser / KNX / Home Assistant
 ```
 
 Groq function-calling turns plain speech into the right action:
@@ -78,7 +78,7 @@ cp .env.example .env      # add GROQ_API_KEY + ALEXA_SKILL_ID (HOME_HUB_URL opti
 - Import the model from [`skill-package/`](./skill-package/); set **Endpoint → HTTPS** to your tunnel URL; **Build Model**
 - Add the **locale that matches your Echo's language** (e.g. English (India))
 
-**4. Wire your home** (optional) — set `HOME_HUB_URL` / `HOME_HUB_TOKEN` to your Schneider/Wiser hub, KNX-IP gateway, or Home Assistant REST endpoint. Until then it runs in dry-run (understands + confirms + logs, doesn't fire).
+**4. Wire your home** (optional) — set `HOME_HUB_URL` / `HOME_HUB_TOKEN` to a bridge for your controller (I'm wiring **Control4**; Schneider/Wiser, KNX-IP, or Home Assistant work the same way). Until then it runs in dry-run (understands + confirms + logs, doesn't fire).
 
 Full setup + gotchas: [`server/README.md`](./server/README.md).
 

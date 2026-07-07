@@ -17,16 +17,16 @@ Then add near the top of `README.md` (right under the title tagline):
 ![Lexi in action](docs/demo.gif)
 ```
 
-## 2. The smoking gun — `docs/cloudwatch-broken.png`
+## 2. Optional evidence — `docs/cloudwatch-broken.png`
 
-Credibility shot for the "Amazon's hosting is broken" claim.
+Supports the *hedged* "honest aside on hosting" in the blog — not a headline claim, just proof for the curious. Skip if you'd rather not lead with it.
 
 - Alexa dev console → one of the (Alexa-hosted) skills → **Code → CloudWatch Logs**.
 - Open the log group `/aws/lambda/<skill-id>` → screenshot the red banner:
   **"Log group does not exist … does not exist in this account or region."**
 - Save as `docs/cloudwatch-broken.png`.
 
-Then add it in the "Why not just Alexa-hosted?" section of `README.md`:
+Then add it near the "honest aside" in `BLOG.md` (or the "Why self-hosted?" section of `README.md`):
 ```markdown
 ![CloudWatch: the runtime Lambda's log group was never created](docs/cloudwatch-broken.png)
 ```
