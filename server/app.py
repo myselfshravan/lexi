@@ -79,11 +79,21 @@ GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 MODEL = os.environ.get("GROQ_MODEL", "openai/gpt-oss-120b").strip()
 PORT = int(os.environ.get("PORT", "8080"))
 
+# Home-automation hub (Schneider / Wiser / KNX-IP gateway / Home Assistant / etc.)
+# Leave HOME_HUB_URL empty to run in DRY-RUN mode (Lexi understands & confirms the
+# command and logs it, but doesn't fire it) — safe for demos before wiring your hub.
+HUB_URL = os.environ.get("HOME_HUB_URL", "").strip()
+HUB_TOKEN = os.environ.get("HOME_HUB_TOKEN", "").strip()
+
 PERSONA = (
-    "You are Lexi, a witty, warm voice assistant living in an Amazon Echo. "
-    "You're sharp, a little playful, never robotic. Answer in at most 3 short "
-    "spoken sentences. Plain words only - no markdown, lists, emoji, or code, "
-    "since everything you say is read aloud. If you don't know, say so briefly."
+    "You are Lexi, a witty, warm home assistant living in an Amazon Echo - a Jarvis "
+    "for this house. You control a smart home of 400+ devices (lights, fans, ACs, "
+    "curtains, motor gates, plugs) and can run scenes, using the provided tools "
+    "whenever the user asks to switch, open, close, dim, or set anything. For "
+    "everything else, just answer. Confirm each action in one short spoken sentence. "
+    "Answer in at most 3 short spoken sentences. Plain words only - no markdown, "
+    "lists, emoji, or code, since everything is read aloud. If a request is ambiguous "
+    "(which room?), ask one quick clarifying question."
 )
 
 
@@ -106,18 +116,52 @@ def turn():
 # --------------------------------------------------------------------------- #
 #  Tools (Groq function-calling)                                              #
 # --------------------------------------------------------------------------- #
-TOOLS = [{
-    "type": "function",
-    "function": {
-        "name": "get_weather",
-        "description": "Get the current weather for a city.",
-        "parameters": {
-            "type": "object",
-            "properties": {"city": {"type": "string", "description": "City name"}},
-            "required": ["city"],
+TOOLS = [
+    {
+        "type": "function",
+        "function": {
+            "name": "control_home",
+            "description": "Switch on/off or set any smart-home device by area and type "
+                           "(lights, fan, ac, curtain, gate, plug, geyser, etc.).",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "area": {"type": "string", "description": "Room/zone e.g. 'living room', 'master bedroom', 'garden'; use 'all' for the whole house"},
+                    "device": {"type": "string", "description": "Device type e.g. 'light', 'fan', 'ac', 'curtain', 'gate', 'plug'"},
+                    "action": {"type": "string", "enum": ["on", "off", "toggle", "open", "close", "stop", "set"]},
+                    "value": {"type": "string", "description": "Optional: brightness % (light), speed 1-5 (fan), temperature C (ac), or position % (curtain/gate)"},
+                },
+                "required": ["area", "device", "action"],
+            },
         },
     },
-}]
+    {
+        "type": "function",
+        "function": {
+            "name": "run_scene",
+            "description": "Activate a saved home scene/mood.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "scene": {"type": "string", "description": "e.g. 'movie night', 'good morning', 'goodnight', 'all off'"},
+                },
+                "required": ["scene"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_weather",
+            "description": "Get the current weather for a city.",
+            "parameters": {
+                "type": "object",
+                "properties": {"city": {"type": "string", "description": "City name"}},
+                "required": ["city"],
+            },
+        },
+    },
+]
 # Add your own tools above; register them in dispatch_tool below.
 
 
@@ -141,9 +185,45 @@ def get_weather(city):
             f"with wind at {round(c['wind_speed_10m'])} kilometers per hour.")
 
 
+def hub_request(payload):
+    """Send a command to your home-automation hub. Point HOME_HUB_URL at your
+    Schneider/Wiser hub, KNX-IP gateway, or Home Assistant REST endpoint. Until it's
+    set, run in dry-run (understand + confirm + log the command, but don't fire it)."""
+    if not HUB_URL:
+        log.info("   home (DRY-RUN) > %s", payload)
+        return True
+    headers = {"Content-Type": "application/json"}
+    if HUB_TOKEN:
+        headers["Authorization"] = f"Bearer {HUB_TOKEN}"
+    r = requests.post(HUB_URL, json=payload, headers=headers, timeout=5)
+    r.raise_for_status()
+    return True
+
+
+def control_home(area, device, action, value=None):
+    ok = hub_request({"type": "control", "area": area, "device": device,
+                      "action": action, "value": value})
+    if not ok:
+        return "I couldn't reach the home hub."
+    verb = {"on": "turned on", "off": "turned off", "toggle": "toggled",
+            "open": "opened", "close": "closed", "stop": "stopped",
+            "set": "set"}.get(action, action)
+    tail = f" to {value}" if value else ""
+    return f"Done — {verb} the {area} {device}{tail}."
+
+
+def run_scene(scene):
+    ok = hub_request({"type": "scene", "scene": scene})
+    return f"Running the {scene} scene." if ok else "I couldn't reach the home hub."
+
+
 def dispatch_tool(name, args):
     log.info("   · tool  %s(%s)", name, args)
     turn()["tools"].append(name)
+    if name == "control_home":
+        return control_home(**args)
+    if name == "run_scene":
+        return run_scene(**args)
     if name == "get_weather":
         return get_weather(**args)
     return "That tool isn't available."
@@ -257,6 +337,11 @@ class SessionEndedHandler(AbstractRequestHandler):
         return ask_utils.is_request_type("SessionEndedRequest")(handler_input)
 
     def handle(self, handler_input):
+        req = handler_input.request_envelope.request
+        reason = getattr(req, "reason", None)
+        error = getattr(req, "error", None)
+        log.info("   session ended · reason=%s%s", reason,
+                 f" · error={error}" if error else "")
         return handler_input.response_builder.response
 
 
