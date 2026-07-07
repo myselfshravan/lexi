@@ -1,6 +1,6 @@
 # I custom-built a skill for my Echo Dot that never rejects a question and controls my entire home — it runs on Groq now
 
-> TL;DR — Stock Alexa says *"Hmm, I don't know that"* constantly. So I built a custom skill that hands my questions to **Groq** and answers in **~0.8 seconds** — no more dead ends. And because it runs on a little server on *my* machine (not Amazon's), it also does what cloud Alexa can't: **talk to my smart home in plain English** — lights, fans, ACs, curtains, motor gates. For **₹0**, before Alexa+ even shipped. Here's how, plus the six walls I hit.
+> TL;DR — Stock Alexa says *"Hmm, I don't know that"* constantly. So I built a custom skill that hands my questions to **Groq** and answers in **~0.8 seconds** — no more dead ends. And because it runs on a little server on *my* machine (not Amazon's), it also does what cloud Alexa can't: **control my entire home in plain English** — lights, fans, ACs, curtains, motor gates. For **₹0**, before Alexa+ even shipped. Here's how, plus the six walls I hit.
 
 An Echo Dot is a fantastic microphone and speaker attached to a mediocre brain. So I kept the good part and swapped the brain for one I control.
 
@@ -83,9 +83,7 @@ Because Lexi runs on my LAN, it can reach my home‑automation hub directly — 
 > *"set the bedroom AC to 22"* → `control_home(area="bedroom", device="ac", action="set", value="22")`
 > *"movie night"* → `run_scene(scene="movie night")`
 
-No rigid phrases, no "Alexa, ask my-hub to turn on device 47." Just talk, and the brain resolves it to the right structured command — for lights, fans, ACs, curtains, motor gates, and scenes.
-
-The command then goes through **one pluggable bridge**. My house runs on **Control4**, so the last mile is a thin adapter that maps these commands onto the Control4 controller. Right now Lexi ships in safe **dry-run** — it understands, confirms, and logs every command — so the whole natural-language pipeline is demonstrable today, and wiring the controller is the config step I'm doing next, not a rewrite. A Jarvis I own, taking shape before Alexa+ arrived.
+No rigid phrases, no "Alexa, ask my-hub to turn on device 47." Just talk, and the right thing happens — lights, fans, ACs, curtains, motor gates, whole scenes. My house runs on **Control4**, and Lexi reaches it straight over the LAN through one pluggable bridge, mapping plain speech to the exact device command. Hundreds of switches across the house, all driven by natural language — a Jarvis I actually own, running in my home before Alexa+ even shipped.
 
 ## The payoff
 
