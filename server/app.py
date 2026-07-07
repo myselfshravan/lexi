@@ -230,43 +230,46 @@ def dispatch_tool(name, args):
 
 
 # --------------------------------------------------------------------------- #
-#  Groq call (with tool loop)                                                  #
+#  Groq call — ONE round-trip                                                  #
+#                                                                              #
+#  Alexa gives a skill only ~8s to reply. A multi-round tool loop (decide the  #
+#  tool → run it → call Groq AGAIN to phrase the reply) does 2-3 sequential    #
+#  Groq calls and blows past that, so home commands time out on the device.    #
+#  Instead we make a single call: if the model answers, speak it; if it calls  #
+#  tool(s), run them and speak their confirmation string directly (control_home#
+#  / run_scene / get_weather already return clean spoken sentences).           #
 # --------------------------------------------------------------------------- #
 def ask_groq(question, history):
     t = turn()
     t["query"] = question
     messages = [{"role": "system", "content": PERSONA}] + history + \
                [{"role": "user", "content": question}]
-    for _ in range(3):  # allow a couple of tool rounds
-        t0 = time.time()
-        r = requests.post(
-            GROQ_URL,
-            headers={"Authorization": f"Bearer {GROQ_KEY}"},
-            json={"model": MODEL, "messages": messages, "tools": TOOLS,
-                  "tool_choice": "auto", "max_tokens": 220, "temperature": 0.7},
-            timeout=8,
-        )
-        dt = (time.time() - t0) * 1000
-        t["groq_ms"] += dt
-        if r.status_code != 200:
-            log.error("   · groq ERROR %s: %s", r.status_code, _clip(r.text, 200))
-            r.raise_for_status()
-        body = r.json()
-        usage = body.get("usage", {})
-        t["tokens_in"] += usage.get("prompt_tokens", 0) or 0
-        t["tokens_out"] += usage.get("completion_tokens", 0) or 0
-        msg = body["choices"][0]["message"]
-        if msg.get("tool_calls"):
-            messages.append(msg)
-            for tc in msg["tool_calls"]:
-                out = dispatch_tool(tc["function"]["name"],
-                                    json.loads(tc["function"]["arguments"] or "{}"))
-                messages.append({"role": "tool", "tool_call_id": tc["id"], "content": out})
-            continue
+    t0 = time.time()
+    r = requests.post(
+        GROQ_URL,
+        headers={"Authorization": f"Bearer {GROQ_KEY}"},
+        json={"model": MODEL, "messages": messages, "tools": TOOLS,
+              "tool_choice": "auto", "max_tokens": 220, "temperature": 0.7},
+        timeout=6,
+    )
+    t["groq_ms"] += (time.time() - t0) * 1000
+    if r.status_code != 200:
+        log.error("   · groq ERROR %s: %s", r.status_code, _clip(r.text, 200))
+        r.raise_for_status()
+    body = r.json()
+    usage = body.get("usage", {})
+    t["tokens_in"] += usage.get("prompt_tokens", 0) or 0
+    t["tokens_out"] += usage.get("completion_tokens", 0) or 0
+    msg = body["choices"][0]["message"]
+    if msg.get("tool_calls"):
+        outs = [dispatch_tool(tc["function"]["name"],
+                              json.loads(tc["function"]["arguments"] or "{}"))
+                for tc in msg["tool_calls"]]
+        answer = " ".join(o for o in outs if o).strip() or "Done."
+    else:
         answer = (msg.get("content") or "Hmm, I blanked on that one.").strip()
-        t["answer"] = answer
-        return answer
-    return "That got complicated - ask me again?"
+    t["answer"] = answer
+    return answer
 
 
 # --------------------------------------------------------------------------- #
